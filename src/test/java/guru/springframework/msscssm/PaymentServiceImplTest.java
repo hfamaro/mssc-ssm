@@ -1,8 +1,10 @@
 package guru.springframework.msscssm;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,8 +41,8 @@ public class PaymentServiceImplTest {
         StateMachine<PaymentState, PaymentEvent> sm = paymentService.preAuth(savedPayment.getId());
         Payment preAuthedPayment = paymentRepository.getOne(savedPayment.getId());
 
-        assertEquals(PaymentState.PRE_AUTH, preAuthedPayment.getState());
-        assertEquals(PaymentState.PRE_AUTH, sm.getState().getId());
+        assertTrue(Arrays.asList(PaymentState.PRE_AUTH, PaymentState.PRE_AUTH_ERROR).contains(preAuthedPayment.getState()));
+        assertTrue(Arrays.asList(PaymentState.PRE_AUTH, PaymentState.PRE_AUTH_ERROR).contains(sm.getState().getId()));
     }
 }
 

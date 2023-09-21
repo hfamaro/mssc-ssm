@@ -1,18 +1,24 @@
 package guru.springframework.msscssm.config;
 
 import java.util.EnumSet;
+import java.util.Random;
 
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.statemachine.action.Action;
 import org.springframework.statemachine.config.EnableStateMachineFactory;
 import org.springframework.statemachine.config.StateMachineConfigurerAdapter;
 import org.springframework.statemachine.config.builders.StateMachineConfigurationConfigurer;
 import org.springframework.statemachine.config.builders.StateMachineStateConfigurer;
 import org.springframework.statemachine.config.builders.StateMachineTransitionConfigurer;
+import org.springframework.statemachine.guard.Guard;
 import org.springframework.statemachine.listener.StateMachineListenerAdapter;
 import org.springframework.statemachine.state.State;
 
 import guru.springframework.msscssm.domain.PaymentEvent;
 import guru.springframework.msscssm.domain.PaymentState;
+import guru.springframework.msscssm.services.PaymentServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -35,6 +41,8 @@ public class StateMachineConfig extends StateMachineConfigurerAdapter<PaymentSta
                     .source(PaymentState.NEW)
                     .target(PaymentState.NEW)
                     .event(PaymentEvent.PRE_AUTHORIZE)
+                    .action(preAuthAction())
+                    .guard(paymentIdGuard())
             .and()
                 .withExternal()
                     .source(PaymentState.NEW)
@@ -74,8 +82,23 @@ public class StateMachineConfig extends StateMachineConfigurerAdapter<PaymentSta
         config.withConfiguration().listener(adapter);
     }
 
-    
+    private Guard<PaymentState, PaymentEvent> paymentIdGuard(){
+        return context -> {
+            return context.getMessageHeader(PaymentServiceImpl.PAYMENT_ID_HEADER) != null;
+        };
+    }
 
-    
-    
+    private Action<PaymentState, PaymentEvent> preAuthAction(){
+        return context -> {
+            System.out.println("PreAuth was called!!!");
+            boolean isApproved = new Random().nextInt(10) < 8;
+            PaymentEvent paymentEvent = isApproved ? PaymentEvent.PRE_AUTH_APPROVED : PaymentEvent.PRE_AUTH_DECLINED;
+            System.out.println(isApproved ? "Approved" : "Declined! No credit!!!");
+            Message<PaymentEvent> msg = MessageBuilder
+                .withPayload(paymentEvent)
+                .setHeader(PaymentServiceImpl.PAYMENT_ID_HEADER, context.getMessageHeader(PaymentServiceImpl.PAYMENT_ID_HEADER))
+                .build();
+            context.getStateMachine().sendEvent(msg);
+        };
+    }
 }
